@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  jellyfin-m3u-export:
+    build: .
+    container_name: jellyfin-m3u-export
+    restart: unless-stopped
+    environment:
+      - JELLYFIN_URL=${JELLYFIN_URL:-http://jellyfin:8096}
+      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY}
+      - JELLYSEERR_URL=${JELLYSEERR_URL:-http://jellyseerr:5055}
+      - JELLYSEERR_API_KEY=${JELLYSEERR_API_KEY}
+      - PORT=3000
+      - OUTPUT_DIR=/output
+      - UPDATE_INTERVAL=${UPDATE_INTERVAL:-60}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./output:/output
+    # Uncomment and configure networks if your jellyfin/jellyseerr use a specific network
+    # networks:
+    #   - media-network
+
+# Uncomment if using a custom Docker network
+# Replace 'media-network' with your actual network name (e.g., jellyfin_default)
+# networks:
+#   media-network:
+#     external: true
+#     name: jellyfin_default
