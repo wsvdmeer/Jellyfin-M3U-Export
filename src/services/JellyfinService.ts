@@ -10,9 +10,11 @@ export interface JellyfinItem {
     Protocol: string;
   }>;
   SeriesName?: string;
+  SeriesId?: string;
   IndexNumber?: number;
   ParentIndexNumber?: number;
   ProductionYear?: number;
+  ProviderIds?: Record<string, string>;
 }
 
 export class JellyfinService {
@@ -21,54 +23,72 @@ export class JellyfinService {
 
   constructor(baseUrl: string, apiKey: string) {
     this.baseUrl = baseUrl;
+    console.log(`[Jellyfin] Initializing connection to: ${baseUrl}`);
     this.client = axios.create({
       baseURL: baseUrl,
       headers: {
         "X-MediaBrowser-Token": apiKey,
       },
+      timeout: 30000,
     });
   }
 
-  async getMovies(): Promise<JellyfinItem[]> {
+  private async fetchItems(
+    label: string,
+    params: Record<string, unknown>
+  ): Promise<JellyfinItem[]> {
     try {
-      const response = await this.client.get("/Items", {
-        params: {
-          IncludeItemTypes: "Movie",
-          Recursive: true,
-          Fields: "Path,MediaSources",
-          SortBy: "SortName",
-        },
-      });
-      return response.data.Items || [];
+      console.log(`[Jellyfin] Fetching ${label}...`);
+      const response = await this.client.get("/Items", { params });
+      const items = response.data.Items || [];
+      console.log(`[Jellyfin] ✓ Found ${items.length} ${label}`);
+      return items;
     } catch (error) {
-      console.error("Error fetching movies from Jellyfin:", error);
+      if (axios.isAxiosError(error)) {
+        console.error(
+          `[Jellyfin] ✗ Failed to fetch ${label}: ${error.message}`
+        );
+        console.error(`[Jellyfin]   URL: ${error.config?.url}`);
+        console.error(`[Jellyfin]   Status: ${error.response?.status}`);
+        if (error.response?.status === 401) {
+          console.error(
+            "[Jellyfin]   Authentication failed - check your API key"
+          );
+        }
+      } else {
+        console.error(`[Jellyfin] ✗ Error fetching ${label}:`, error);
+      }
       return [];
     }
+  }
+
+  async getMovies(): Promise<JellyfinItem[]> {
+    return this.fetchItems("movies", {
+      IncludeItemTypes: "Movie",
+      Recursive: true,
+      Fields: "Path,MediaSources,ProviderIds",
+      SortBy: "SortName",
+    });
   }
 
   async getSeries(): Promise<JellyfinItem[]> {
-    try {
-      const response = await this.client.get("/Items", {
-        params: {
-          IncludeItemTypes: "Episode",
-          Recursive: true,
-          Fields: "Path,MediaSources,SeriesName",
-          SortBy: "SeriesName,ParentIndexNumber,IndexNumber",
-        },
-      });
-      return response.data.Items || [];
-    } catch (error) {
-      console.error("Error fetching series from Jellyfin:", error);
-      return [];
-    }
+    return this.fetchItems("episodes", {
+      IncludeItemTypes: "Episode",
+      Recursive: true,
+      Fields: "Path,MediaSources,SeriesName",
+      SortBy: "SeriesName,ParentIndexNumber,IndexNumber",
+    });
   }
 
-  async getAllContent(): Promise<JellyfinItem[]> {
-    const [movies, series] = await Promise.all([
-      this.getMovies(),
-      this.getSeries(),
-    ]);
-    return [...movies, ...series];
+  // TV shows (Series items) - used to match Jellyseerr TV requests, which
+  // reference the show's TMDB/TVDB id, against episodes via SeriesId
+  async getShows(): Promise<JellyfinItem[]> {
+    return this.fetchItems("shows", {
+      IncludeItemTypes: "Series",
+      Recursive: true,
+      Fields: "ProviderIds",
+      SortBy: "SortName",
+    });
   }
 
   getStreamUrl(itemId: string): string {

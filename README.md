@@ -5,12 +5,24 @@ A Docker container that exports Jellyfin and Jellyseerr content as M3U playlists
 ## Features
 
 - 🎬 Export Jellyfin movies and series as M3U playlists
-- 📺 Support for Jellyseerr requested content
+- 📺 Jellyseerr requested content, matched to your library via TMDB/IMDB/TVDB ids
 - 🔄 Automatic periodic playlist updates
 - 🌐 REST API for manual triggers
-- 🐳 Docker and Docker Compose support
+- 🐳 Docker and Docker Compose support, minimal distroless image
 
 ## Quick Start
+
+### Option A: Pre-built image
+
+Uses the image published to GitHub Container Registry:
+
+```bash
+cp .env.example .env   # then fill in your API keys
+mkdir -p output && sudo chown 65532:65532 output
+docker compose -f docker-compose.prod.yml up -d
+```
+
+### Option B: Build locally
 
 ### 1. Clone and Configure
 
@@ -58,7 +70,8 @@ The service will generate the following playlists in the `./output` directory:
 - `jellyfin-all.m3u` - All movies and series
 - `jellyfin-movies.m3u` - Movies only
 - `jellyfin-series.m3u` - TV series episodes only
-- `jellyfin-requested.m3u` - Content requested via Jellyseerr
+- `jellyfin-requested.m3u` - Content requested via Jellyseerr that is now
+  available in Jellyfin (movies matched by TMDB/IMDB id, shows by TMDB/TVDB id)
 
 You can also access them via HTTP:
 
@@ -149,6 +162,15 @@ npm start
 Point your IPTV player to any of the playlist URLs listed above.
 
 ## Troubleshooting
+
+### Playlists are not written (permission denied)
+
+The container runs as non-root user `65532`. If Docker created the `output/`
+directory as root on first run, the app cannot write to it. Fix with:
+
+```bash
+mkdir -p output && sudo chown 65532:65532 output
+```
 
 ### Playlists are empty
 

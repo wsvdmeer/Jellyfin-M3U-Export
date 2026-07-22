@@ -1,6 +1,10 @@
+# Production Docker Compose - Use pre-built image from GitHub Container Registry
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+
 services:
   jellyfin-m3u-export:
-    build: .
+    # Pull pre-built image from GitHub Container Registry
+    image: ghcr.io/wsvdmeer/jellyfin-m3u-export:latest
     container_name: jellyfin-m3u-export
     restart: unless-stopped
     environment:
@@ -17,13 +21,28 @@ services:
       # The container runs as non-root user 65532. Pre-create the directory
       # so it is writable: mkdir -p output && chown 65532:65532 output
       - ./output:/output
+
+
+    # ADVANCED OPTIONS:
+    # Mount to existing media share:
+    # - /mnt/media/playlists:/output
+    # 
+    # Use named volume:
+    # - jellyfin-playlists:/output
+    
     # Uncomment and configure networks if your jellyfin/jellyseerr use a specific network
     # networks:
     #   - media-network
 
 # Uncomment if using a custom Docker network
 # Replace 'media-network' with your actual network name (e.g., jellyfin_default)
+# Find your network with: docker network ls
 # networks:
 #   media-network:
 #     external: true
 #     name: jellyfin_default
+
+# Uncomment if using named volumes
+# volumes:
+#   jellyfin-playlists:
+#     driver: local
